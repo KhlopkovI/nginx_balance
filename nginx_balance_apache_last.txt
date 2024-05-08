@@ -1,0 +1,155 @@
+
+
+
+
+root@astral:~/nginx/conf.d# nano default.conf
+
+upstream backend{
+      server 127.0.0.1:9000;
+      server 127.0.0.1:9001;
+      server 127.0.0.1:9002;
+   }
+
+server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+
+        root /var/www/html;
+
+        index index.html index.htm index.nginx-debian.html;
+
+        server_name _;
+
+        location / {
+                proxy_pass http://backend;
+        }
+
+}
+
+
+
+root@astral:/etc/apache2# nano sites-enabled/000-default.conf
+
+###Apache2
+
+<VirtualHost 127.0.0.1:9000>
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html/apache2/9000
+
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+</VirtualHost>
+
+<VirtualHost 127.0.0.1:9001>
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html/apache2/9001
+
+
+        ErrorLog ${APACHE_LOG_DIR}/error1.log
+        CustomLog ${APACHE_LOG_DIR}/access1.log combined
+
+</VirtualHost>
+
+<VirtualHost 127.0.0.1:9002>
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html/apache2/9002
+
+
+        ErrorLog ${APACHE_LOG_DIR}/error2.log
+        CustomLog ${APACHE_LOG_DIR}/access2.log combined
+
+</VirtualHost>
+
+###
+
+root@astral:/etc/apache2#docker run -d --name nginx1 --network host -v /root/nginx:/etc/nginx nginx
+
+
+
+root@astral:/etc/apache2# ss -ntlp
+State             Recv-Q            Send-Q                       Local Address:Port                          Peer Address:Port            Process
+LISTEN            0                 32                                 0.0.0.0:53                                 0.0.0.0:*                users:(("dnsmasq",pid=672,fd=5))
+LISTEN            0                 128                                0.0.0.0:22                                 0.0.0.0:*                users:(("sshd",pid=680,fd=3))
+LISTEN            0                 128                              127.0.0.1:631                                0.0.0.0:*                users:(("cupsd",pid=1005,fd=7))
+LISTEN            0                 511                                0.0.0.0:80                                 0.0.0.0:*                users:(("nginx",pid=6981,fd=6),("nginx",pid=6945,fd=6))
+LISTEN            0                 4096                             127.0.0.1:38961                              0.0.0.0:*                users:(("containerd",pid=869,fd=11))
+LISTEN            0  docker run -d --name nginx1 --network host -v /root/nginx:/etc/nginx nginx               32                                    [::]:53                                    [::]:*                users:(("dnsmasq",pid=672,fd=7))
+LISTEN            0                 128                                   [::]:22                                    [::]:*                users:(("sshd",pid=680,fd=4))
+LISTEN            0                 128                                  [::1]:631                                   [::]:*                users:(("cupsd",pid=1005,fd=6))
+LISTEN            0                 511                                      *:9000                                     *:*                users:(("apache2",pid=4882,fd=4),("apache2",pid=922,fd=4),("apache2",pid=921,fd=4),("apache2",pid=920,fd=4),("apache2",pid=919,fd=4),("apache2",pid=918,fd=4),("apache2",pid=915,fd=4))
+LISTEN            0                 511                                      *:9001                                     *:*                users:(("apache2",pid=4882,fd=6),("apache2",pid=922,fd=6),("apache2",pid=921,fd=6),("apache2",pid=920,fd=6),("apache2",pid=919,fd=6),("apache2",pid=918,fd=6),("apache2",pid=915,fd=6))
+LISTEN            0                 511                                      *:9002                                     *:*                users:(("apache2",pid=4882,fd=8),("apache2",pid=922,fd=8),("apache2",pid=921,fd=8),("apache2",pid=920,fd=8),("apache2",pid=919,fd=8),("apache2",pid=918,fd=8),("apache2",pid=915,fd=8))
+LISTEN            0                 511                                   [::]:80                                    [::]:*                users:(("nginx",pid=6981,fd=7),("nginx",pid=6945,fd=7))
+root@astral:/etc/apache2#
+
+
+
+root@astral:/etc/apache2# ps afx
+
+6923 ?        Sl     0:00 /usr/bin/containerd-shim-runc-v2 -namespace moby -id 4c5d5aa3482258fbc6a8cfe212feb146c3298d9dcb3d0f45269351867b
+ 6945 ?        Ss     0:00  \_ nginx: master process nginx -g daemon off;
+ 6981 ?        S      0:00      \_ nginx: worker process
+root@astral:/etc/apache2#
+
+
+root@astral:/etc/apache2# curl http://localhost:80
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Apache2 Debian Default Page 9001: It works</title>
+    <style type="text/css" media="screen">
+  * {
+    margin: 0px 0px 0px 0px;
+    padding: 0px 0px 0px 0px;
+  }
+
+#############
+
+root@astral:/etc/apache2# curl http://localhost:80
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Apache2 Debian Default Page 9002: It works</title>
+    <style type="text/css" media="screen">
+  * {
+    margin: 0px 0px 0px 0px;
+    padding: 0px 0px 0px 0px;
+  }
+
+###############root@astral:/etc/apache2# curl http://localhost:80
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Apache2 Debian Default Page 9000: It works</title>
+    <style type="text/css" media="screen">
+  * {
+    margin: 0px 0px 0px 0px;
+    padding: 0px 0px 0px 0px;
+  }
+
+
+root@astral:/etc/apache2# curl http://localhost:80
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    <title>Apache2 Debian Default Page 9000: It works</title>
+    <style type="text/css" media="screen">
+  * {
+    margin: 0px 0px 0px 0px;
+    padding: 0px 0px 0px 0px;
+  }
+
+
